@@ -1,0 +1,702 @@
+CREATE TABLE Users (
+    UserID INT IDENTITY(1,1) PRIMARY KEY,
+    FirstName NVARCHAR(100),
+    LastName NVARCHAR(100),
+    Email NVARCHAR(100) UNIQUE,
+    Password NVARCHAR(255),
+    UserType NVARCHAR(50) CHECK (UserType IN ('Doctor', 'Patient')),
+    RegistrationDate DATETIME DEFAULT GETDATE()
+);
+GO
+CREATE TABLE Patients (
+    PatientID INT IDENTITY(1,1) PRIMARY KEY,
+    UserID INT,
+    DateOfBirth DATE,
+    Gender NVARCHAR(10) CHECK (Gender IN ('Male', 'Female', 'Other')),
+    ContactNumber NVARCHAR(15),
+    Address NVARCHAR(MAX),
+    RegistrationDate DATETIME DEFAULT GETDATE(),
+    FOREIGN KEY (UserID) REFERENCES Users(UserID)
+);
+GO
+CREATE TABLE Doctors (
+    DoctorID INT IDENTITY(1,1) PRIMARY KEY,
+    UserID INT,
+    Specialization NVARCHAR(100),
+    ContactNumber NVARCHAR(15),
+    AvailabilityStatus NVARCHAR(20) CHECK (AvailabilityStatus IN ('Available', 'Unavailable')),
+    JoinDate DATETIME DEFAULT GETDATE(),
+    FOREIGN KEY (UserID) REFERENCES Users(UserID)
+);
+
+GO
+-- Creating Appointments table
+CREATE TABLE Appointments (
+    AppointmentID INT IDENTITY(1,1) PRIMARY KEY, -- Using IDENTITY instead of AUTO_INCREMENT
+    PatientID INT,
+    DoctorID INT,
+    AppointmentDate DATETIME,
+    Status NVARCHAR(20) CHECK (Status IN ('Scheduled', 'Completed', 'Cancelled')), -- ENUM replaced with CHECK constraint
+    Notes NVARCHAR(MAX),
+    CONSTRAINT FK_Patient FOREIGN KEY (PatientID) REFERENCES Patients(PatientID) ON DELETE CASCADE,
+    CONSTRAINT FK_Doctor FOREIGN KEY (DoctorID) REFERENCES Doctors(DoctorID) ON DELETE CASCADE
+);
+GO
+
+-- Creating Billing table
+CREATE TABLE Billing (
+    BillID INT IDENTITY(1,1) PRIMARY KEY, -- Using IDENTITY instead of AUTO_INCREMENT
+    AppointmentID INT,
+    TotalAmount DECIMAL(10,2),
+    PaymentStatus NVARCHAR(10) CHECK (PaymentStatus IN ('Paid', 'Unpaid')), -- ENUM replaced with CHECK constraint
+    IssueDate DATETIME DEFAULT GETDATE(), -- Using GETDATE() instead of CURRENT_TIMESTAMP
+    CONSTRAINT FK_Appointment FOREIGN KEY (AppointmentID) REFERENCES Appointments(AppointmentID) ON DELETE CASCADE
+);
+GO
+
+-- Creating PharmacyInventory table
+CREATE TABLE PharmacyInventory (
+    ItemID INT IDENTITY(1,1) PRIMARY KEY, -- Using IDENTITY instead of AUTO_INCREMENT
+    ItemName NVARCHAR(100), -- NVARCHAR for Unicode support
+    Quantity INT,
+    PricePerUnit DECIMAL(10,2),
+    ExpiryDate DATE,
+    SupplierName NVARCHAR(100)
+);
+GO
+
+-- Creating Prescriptions table
+CREATE TABLE Prescriptions (
+    PrescriptionID INT IDENTITY(1,1) PRIMARY KEY, -- Using IDENTITY instead of AUTO_INCREMENT
+    PatientID INT,
+    DoctorID INT,
+    DateIssued DATETIME DEFAULT GETDATE(), -- Using GETDATE() for SQL Server
+    Notes NVARCHAR(MAX),
+    CONSTRAINT FK_Prescription_Patient FOREIGN KEY (PatientID) REFERENCES Patients(PatientID) ON DELETE CASCADE,
+    CONSTRAINT FK_Prescription_Doctor FOREIGN KEY (DoctorID) REFERENCES Doctors(DoctorID) ON DELETE CASCADE
+);
+GO
+
+-- Creating PrescriptionItems table
+CREATE TABLE PrescriptionItems (
+    PrescriptionItemID INT IDENTITY(1,1) PRIMARY KEY, -- Using IDENTITY instead of AUTO_INCREMENT
+    PrescriptionID INT,
+    ItemID INT,
+    Quantity INT,
+    CONSTRAINT FK_PrescriptionItem_Prescription FOREIGN KEY (PrescriptionID) REFERENCES Prescriptions(PrescriptionID) ON DELETE CASCADE,
+    CONSTRAINT FK_PrescriptionItem_Item FOREIGN KEY (ItemID) REFERENCES PharmacyInventory(ItemID) ON DELETE CASCADE
+);
+GO
+-- Creating Staff table
+CREATE TABLE Staff (
+    StaffID INT IDENTITY(1,1) PRIMARY KEY, -- Using IDENTITY instead of AUTO_INCREMENT
+    FirstName NVARCHAR(100), -- Using NVARCHAR for Unicode support
+    LastName NVARCHAR(100),
+    Role NVARCHAR(50),
+    ContactNumber NVARCHAR(15),
+    Email NVARCHAR(100),
+    JoinDate DATETIME DEFAULT GETDATE() -- Using GETDATE() for current timestamp
+);
+GO
+
+-- Creating Rooms table
+CREATE TABLE Rooms (
+    RoomID INT IDENTITY(1,1) PRIMARY KEY, -- Using IDENTITY instead of AUTO_INCREMENT
+    RoomType NVARCHAR(10) CHECK (RoomType IN ('General', 'ICU', 'Private')), -- ENUM replaced with CHECK constraint
+    RoomNumber NVARCHAR(10) UNIQUE, -- Using NVARCHAR for Unicode support
+    AvailabilityStatus NVARCHAR(10) CHECK (AvailabilityStatus IN ('Available', 'Occupied')) -- ENUM replaced with CHECK constraint
+);
+GO
+
+-- Creating Admissions table
+CREATE TABLE Admissions (
+    AdmissionID INT IDENTITY(1,1) PRIMARY KEY, -- Using IDENTITY instead of AUTO_INCREMENT
+    PatientID INT,
+    RoomID INT,
+    AdmissionDate DATETIME DEFAULT GETDATE(), -- Using GETDATE() for current timestamp
+    DischargeDate DATETIME,
+    Notes NVARCHAR(MAX),
+    ResponsibleDoctorID INT,
+    ResponsibleNurseID INT,
+    CONSTRAINT FK_Admission_Patient FOREIGN KEY (PatientID) REFERENCES Patients(PatientID) ON DELETE CASCADE,
+    CONSTRAINT FK_Admission_Room FOREIGN KEY (RoomID) REFERENCES Rooms(RoomID) ON DELETE SET NULL,
+    CONSTRAINT FK_Admission_Doctor FOREIGN KEY (ResponsibleDoctorID) REFERENCES Doctors(DoctorID) ON DELETE SET NULL,
+    CONSTRAINT FK_Admission_Nurse FOREIGN KEY (ResponsibleNurseID) REFERENCES Staff(StaffID) ON DELETE SET NULL
+);
+GO
+
+-- Creating MedicalRecords table
+CREATE TABLE MedicalRecords (
+    RecordID INT IDENTITY(1,1) PRIMARY KEY, -- Using IDENTITY instead of AUTO_INCREMENT
+    PatientID INT,
+    DoctorID INT,
+    RecordDate DATETIME DEFAULT GETDATE(), -- Using GETDATE() for current timestamp
+    Description NVARCHAR(MAX), -- Using NVARCHAR for Unicode support
+    CONSTRAINT FK_MedicalRecord_Patient FOREIGN KEY (PatientID) REFERENCES Patients(PatientID) ON DELETE CASCADE,
+    CONSTRAINT FK_MedicalRecord_Doctor FOREIGN KEY (DoctorID) REFERENCES Doctors(DoctorID) ON DELETE CASCADE
+);
+GO
+
+-- Creating LabTechnicians table
+CREATE TABLE LabTechnicians (
+    TechnicianID INT IDENTITY(1,1) PRIMARY KEY, -- Using IDENTITY instead of AUTO_INCREMENT
+    FirstName NVARCHAR(100), -- Using NVARCHAR for Unicode support
+    LastName NVARCHAR(100),
+    ContactNumber NVARCHAR(15),
+    Email NVARCHAR(100),
+    HireDate DATETIME DEFAULT GETDATE() -- Using GETDATE() for current timestamp
+);
+GO
+
+-- Creating LabTests table
+CREATE TABLE LabTests (
+    TestID INT IDENTITY(1,1) PRIMARY KEY, -- Using IDENTITY instead of AUTO_INCREMENT
+    PatientID INT,
+    TechnicianID INT,
+    TestName NVARCHAR(100), -- Using NVARCHAR for Unicode support
+    TestDate DATETIME DEFAULT GETDATE(), -- Using GETDATE() for current timestamp
+    TestResult NVARCHAR(MAX),
+    CONSTRAINT FK_LabTest_Patient FOREIGN KEY (PatientID) REFERENCES Patients(PatientID) ON DELETE CASCADE,
+    CONSTRAINT FK_LabTest_Technician FOREIGN KEY (TechnicianID) REFERENCES LabTechnicians(TechnicianID) ON DELETE SET NULL
+);
+GO
+
+-- Creating LabTestAssignments table
+CREATE TABLE LabTestAssignments (
+    AssignmentID INT IDENTITY(1,1) PRIMARY KEY, -- Using IDENTITY instead of AUTO_INCREMENT
+    TestID INT,
+    TechnicianID INT,
+    AssignmentDate DATETIME DEFAULT GETDATE(), -- Using GETDATE() for current timestamp
+    CONSTRAINT FK_LabTestAssignment_Test FOREIGN KEY (TestID) REFERENCES LabTests(TestID) ON DELETE CASCADE,
+    CONSTRAINT FK_LabTestAssignment_Technician FOREIGN KEY (TechnicianID) REFERENCES LabTechnicians(TechnicianID) ON DELETE CASCADE
+);
+GO
+CREATE TABLE Documents (
+    DocumentID INT IDENTITY(1,1) PRIMARY KEY, -- Belge kimliği
+    DocumentType NVARCHAR(50) CHECK (DocumentType IN ('Invoice', 'Prescription', 'Report')), -- Belge türü
+    RelatedID INT, -- İlgili kayıt ID'si (örn. PrescriptionID, AdmissionID, AppointmentID)
+    CreatedBy INT, -- Belgeyi oluşturan kullanıcının ID'si (DoctorID)
+    CreatedFor INT, -- Belge kimin için oluşturulduysa (PatientID)
+    CreationDate DATETIME DEFAULT GETDATE(), -- Belgenin oluşturulma tarihi
+    Status NVARCHAR(20) CHECK (Status IN ('Draft', 'Completed', 'Approved')), -- Belge durumu
+    Description NVARCHAR(MAX), -- Belge açıklaması
+    FOREIGN KEY (CreatedBy) REFERENCES Doctors(DoctorID) ON DELETE SET NULL,
+    FOREIGN KEY (CreatedFor) REFERENCES Patients(PatientID) ON DELETE CASCADE
+);
+GO
+CREATE TABLE DocumentAccess (
+    AccessID INT IDENTITY(1,1) PRIMARY KEY, -- Erişim kaydı kimliği
+    DocumentID INT, -- Belge kimliği
+    UserID INT, -- Hangi kullanıcıya erişim verildi
+    AccessLevel NVARCHAR(20) CHECK (AccessLevel IN ('Read', 'Write')), -- Erişim seviyesi
+    AccessDate DATETIME DEFAULT GETDATE(), -- Erişim tarihi
+    FOREIGN KEY (DocumentID) REFERENCES Documents(DocumentID) ON DELETE CASCADE,
+    FOREIGN KEY (UserID) REFERENCES Users(UserID) ON DELETE CASCADE
+);
+GO
+CREATE TABLE InvoiceDetails (
+    InvoiceDetailID INT IDENTITY(1,1) PRIMARY KEY, -- Fatura detay kimliği
+    DocumentID INT, -- İlgili belge kimliği (fatura ID'si)
+    ItemDescription NVARCHAR(255), -- Kalem açıklaması (örneğin, ilaç adı veya oda tipi)
+    Quantity INT, -- Miktar (örn. ilaç adedi veya yatış günü)
+    UnitPrice DECIMAL(10,2), -- Birim fiyat
+    TotalPrice AS (Quantity * UnitPrice) PERSISTED, -- Toplam fiyat (hesaplanmış kolon)
+    FOREIGN KEY (DocumentID) REFERENCES Documents(DocumentID) ON DELETE CASCADE
+);
+GO
+CREATE TABLE ReportDetails (
+    ReportID INT IDENTITY(1,1) PRIMARY KEY, -- Rapor kimliği
+    DocumentID INT, -- Belge kimliği (Rapor ID'si)
+    ReportTitle NVARCHAR(255), -- Rapor başlığı
+    ReportContent NVARCHAR(MAX), -- Rapor içeriği
+    FOREIGN KEY (DocumentID) REFERENCES Documents(DocumentID) ON DELETE CASCADE
+);
+GO
+
+CREATE TABLE PrescriptionDetails (
+    PrescriptionDetailID INT IDENTITY(1,1) PRIMARY KEY, -- Reçete detay kimliği
+    DocumentID INT, -- İlgili belge kimliği (Reçete ID'si)
+    ItemID INT, -- İlgili ilaç kimliği
+    Quantity INT, -- İlacın miktarı
+    FOREIGN KEY (DocumentID) REFERENCES Documents(DocumentID) ON DELETE CASCADE,
+    FOREIGN KEY (ItemID) REFERENCES PharmacyInventory(ItemID) ON DELETE CASCADE
+);
+GO
+
+ALTER TABLE Rooms ADD RoomPrice DECIMAL(10, 2);
+UPDATE Rooms
+SET RoomPrice = CASE
+    WHEN RoomType = 'General' THEN 100.00
+    WHEN RoomType = 'ICU' THEN 300.00
+    WHEN RoomType = 'Private' THEN 500.00
+END;
+
+
+
+INSERT INTO Users (FirstName, LastName, Email, Password, UserType, RegistrationDate)
+VALUES
+(N'Ahmet', N'Yılmaz', N'ahmet.yilmaz@gmail.com', N'ahmet.yilmaz@gmail.com', 'Patient', GETDATE()),
+(N'Ayşe', N'Demir', N'ayse.demir@gmail.com', N'ayse.demir@gmail.com', 'Patient', GETDATE()),
+(N'Mehmet', N'Çelik', N'mehmet.celik@gmail.com', N'mehmet.celik@gmail.com', 'Patient', GETDATE()),
+(N'Fatma', N'Kaya', N'fatma.kaya@gmail.com', N'fatma.kaya@gmail.com', 'Patient', GETDATE()),
+(N'Ali', N'Şahin', N'ali.sahin@gmail.com', N'ali.sahin@gmail.com', 'Patient', GETDATE()),
+(N'Zeynep', N'Koç', N'zeynep.koc@gmail.com', N'zeynep.koc@gmail.com', 'Patient', GETDATE()),
+(N'Hüseyin', N'Öztürk', N'huseyin.ozturk@gmail.com', N'huseyin.ozturk@gmail.com', 'Patient', GETDATE()),
+(N'Emine', N'Arslan', N'emine.arslan@gmail.com', N'emine.arslan@gmail.com', 'Patient', GETDATE()),
+(N'Hasan', N'Bozkurt', N'hasan.bozkurt@gmail.com', N'hasan.bozkurt@gmail.com', 'Patient', GETDATE()),
+(N'Elif', N'Çetinkaya', N'elif.cetinkaya@gmail.com', N'elif.cetinkaya@gmail.com', 'Patient', GETDATE()),
+(N'Mustafa', N'Polat', N'mustafa.polat@gmail.com', N'mustafa.polat@gmail.com', 'Patient', GETDATE()),
+(N'Havva', N'Erdem', N'havva.erdem@gmail.com', N'havva.erdem@gmail.com', 'Patient', GETDATE()),
+(N'Kemal', N'Taş', N'kemal.tas@gmail.com', N'kemal.tas@gmail.com', 'Patient', GETDATE()),
+(N'Sevgi', N'Acar', N'sevgi.acar@gmail.com', N'sevgi.acar@gmail.com', 'Patient', GETDATE()),
+(N'Okan', N'Durmaz', N'okan.durmaz@gmail.com', N'okan.durmaz@gmail.com', 'Patient', GETDATE()),
+(N'Duygu', N'Güneş', N'duygu.gunes@gmail.com', N'duygu.gunes@gmail.com', 'Patient', GETDATE()),
+(N'Salih', N'İşler', N'salih.isler@gmail.com', N'salih.isler@gmail.com', 'Patient', GETDATE()),
+(N'Leyla', N'Karaca', N'leyla.karaca@gmail.com', N'leyla.karaca@gmail.com', 'Patient', GETDATE()),
+(N'Eren', N'Kurt', N'eren.kurt@gmail.com', N'eren.kurt@gmail.com', 'Patient', GETDATE()),
+(N'Beyza', N'Akın', N'beyza.akin@gmail.com', N'beyza.akin@gmail.com', 'Patient', GETDATE()),
+(N'Ahmet', N'Kara', N'ahmet.kara@hospital.com', N'ahmet.kara@hospital.com', 'Doctor', GETDATE()),
+(N'Ayşe', N'Demir', N'ayse.demir@hospital.com', N'ayse.demir@hospital.com', 'Doctor', GETDATE()),
+(N'Mehmet', N'Çelik', N'mehmet.celik@hospital.com', N'mehmet.celik@hospital.com', 'Doctor', GETDATE()),
+(N'Fatma', N'Kaya', N'fatma.kaya@hospital.com', N'fatma.kaya@hospital.com', 'Doctor', GETDATE()),
+(N'Ali', N'Şahin', N'ali.sahin@hospital.com', N'ali.sahin@hospital.com', 'Doctor', GETDATE()),
+(N'Zeynep', N'Koç', N'zeynep.koc@hospital.com', N'zeynep.koc@hospital.com', 'Doctor', GETDATE()),
+(N'Hüseyin', N'Öztürk', N'huseyin.ozturk@hospital.com', N'huseyin.ozturk@hospital.com', 'Doctor', GETDATE()),
+(N'Emine', N'Arslan', N'emine.arslan@hospital.com', N'emine.arslan@hospital.com', 'Doctor', GETDATE()),
+(N'Hasan', N'Bozkurt', N'hasan.bozkurt@hospital.com', N'hasan.bozkurt@hospital.com', 'Doctor', GETDATE()),
+(N'Elif', N'Çetinkaya', N'elif.cetinkaya@hospital.com', N'elif.cetinkaya@hospital.com', 'Doctor', GETDATE()),
+(N'Mustafa', N'Polat', N'mustafa.polat@hospital.com', N'mustafa.polat@hospital.com', 'Doctor', GETDATE()),
+(N'Havva', N'Erdem', N'havva.erdem@hospital.com', N'havva.erdem@hospital.com', 'Doctor', GETDATE()),
+(N'Kemal', N'Taş', N'kemal.tas@hospital.com', N'kemal.tas@hospital.com', 'Doctor', GETDATE()),
+(N'Sevgi', N'Acar', N'sevgi.acar@hospital.com', N'sevgi.acar@hospital.com', 'Doctor', GETDATE()),
+(N'Okan', N'Durmaz', N'okan.durmaz@hospital.com', N'okan.durmaz@hospital.com', 'Doctor', GETDATE()),
+(N'Duygu', N'Güneş', N'duygu.gunes@hospital.com', N'duygu.gunes@hospital.com', 'Doctor', GETDATE()),
+(N'Salih', N'İşler', N'salih.isler@hospital.com', N'salih.isler@hospital.com', 'Doctor', GETDATE()),
+(N'Leyla', N'Karaca', N'leyla.karaca@hospital.com', N'leyla.karaca@hospital.com', 'Doctor', GETDATE()),
+(N'Eren', N'Kurt', N'eren.kurt@hospital.com', N'eren.kurt@hospital.com', 'Doctor', GETDATE()),
+(N'Beyza', N'Akın', N'beyza.akin@hospital.com', N'beyza.akin@hospital.com', 'Doctor', GETDATE());
+GO
+
+INSERT INTO Patients (UserID, DateOfBirth, Gender, ContactNumber, Address, RegistrationDate)
+SELECT 
+    UserID, 
+    CASE Email
+        WHEN 'ahmet.yilmaz@gmail.com' THEN '1985-03-15'
+        WHEN 'ayse.demir@gmail.com' THEN '1990-06-21'
+        WHEN 'mehmet.celik@gmail.com' THEN '1980-09-10'
+        WHEN 'fatma.kaya@gmail.com' THEN '1995-12-05'
+        WHEN 'ali.sahin@gmail.com' THEN '1975-01-30'
+        WHEN 'zeynep.koc@gmail.com' THEN '1992-11-20'
+        WHEN 'huseyin.ozturk@gmail.com' THEN '1988-07-14'
+        WHEN 'emine.arslan@gmail.com' THEN '1993-02-22'
+        WHEN 'hasan.bozkurt@gmail.com' THEN '1982-08-18'
+        WHEN 'elif.cetinkaya@gmail.com' THEN '1997-04-12'
+        WHEN 'mustafa.polat@gmail.com' THEN '1989-05-03'
+        WHEN 'havva.erdem@gmail.com' THEN '1991-09-25'
+        WHEN 'kemal.tas@gmail.com' THEN '1978-12-14'
+        WHEN 'sevgi.acar@gmail.com' THEN '1986-02-28'
+        WHEN 'okan.durmaz@gmail.com' THEN '1994-06-19'
+        WHEN 'duygu.gunes@gmail.com' THEN '1998-10-11'
+        WHEN 'salih.isler@gmail.com' THEN '1983-03-07'
+        WHEN 'leyla.karaca@gmail.com' THEN '1996-07-09'
+        WHEN 'eren.kurt@gmail.com' THEN '1981-11-05'
+        WHEN 'beyza.akin@gmail.com' THEN '1999-01-18'
+    END AS DateOfBirth,
+    CASE Email
+        WHEN 'ahmet.yilmaz@gmail.com' THEN 'Male'
+        WHEN 'ayse.demir@gmail.com' THEN 'Female'
+        WHEN 'mehmet.celik@gmail.com' THEN 'Male'
+        WHEN 'fatma.kaya@gmail.com' THEN 'Female'
+        WHEN 'ali.sahin@gmail.com' THEN 'Male'
+        WHEN 'zeynep.koc@gmail.com' THEN 'Female'
+        WHEN 'huseyin.ozturk@gmail.com' THEN 'Male'
+        WHEN 'emine.arslan@gmail.com' THEN 'Female'
+        WHEN 'hasan.bozkurt@gmail.com' THEN 'Male'
+        WHEN 'elif.cetinkaya@gmail.com' THEN 'Female'
+        WHEN 'mustafa.polat@gmail.com' THEN 'Male'
+        WHEN 'havva.erdem@gmail.com' THEN 'Female'
+        WHEN 'kemal.tas@gmail.com' THEN 'Male'
+        WHEN 'sevgi.acar@gmail.com' THEN 'Female'
+        WHEN 'okan.durmaz@gmail.com' THEN 'Male'
+        WHEN 'duygu.gunes@gmail.com' THEN 'Female'
+        WHEN 'salih.isler@gmail.com' THEN 'Male'
+        WHEN 'leyla.karaca@gmail.com' THEN 'Female'
+        WHEN 'eren.kurt@gmail.com' THEN 'Male'
+        WHEN 'beyza.akin@gmail.com' THEN 'Female'
+    END AS Gender,
+    CASE Email
+        WHEN 'ahmet.yilmaz@gmail.com' THEN '05321234567'
+        WHEN 'ayse.demir@gmail.com' THEN '05351234567'
+        WHEN 'mehmet.celik@gmail.com' THEN '05421234567'
+        WHEN 'fatma.kaya@gmail.com' THEN '05451234567'
+        WHEN 'ali.sahin@gmail.com' THEN '05331234567'
+        WHEN 'zeynep.koc@gmail.com' THEN '05521234567'
+        WHEN 'huseyin.ozturk@gmail.com' THEN '05341234567'
+        WHEN 'emine.arslan@gmail.com' THEN '05461234567'
+        WHEN 'hasan.bozkurt@gmail.com' THEN '05481234567'
+        WHEN 'elif.cetinkaya@gmail.com' THEN '05361234567'
+        WHEN 'mustafa.polat@gmail.com' THEN '05371234567'
+        WHEN 'havva.erdem@gmail.com' THEN '05471234567'
+        WHEN 'kemal.tas@gmail.com' THEN '05541234567'
+        WHEN 'sevgi.acar@gmail.com' THEN '05491234567'
+        WHEN 'okan.durmaz@gmail.com' THEN '05381234567'
+        WHEN 'duygu.gunes@gmail.com' THEN '05431234567'
+        WHEN 'salih.isler@gmail.com' THEN '05401234567'
+        WHEN 'leyla.karaca@gmail.com' THEN '05391234567'
+        WHEN 'eren.kurt@gmail.com' THEN '05451234567'
+        WHEN 'beyza.akin@gmail.com' THEN '05561234567'
+    END AS ContactNumber,
+    CASE Email
+        WHEN 'ahmet.yilmaz@gmail.com' THEN 'İstanbul, Türkiye'
+        WHEN 'ayse.demir@gmail.com' THEN 'Ankara, Türkiye'
+        WHEN 'mehmet.celik@gmail.com' THEN 'İzmir, Türkiye'
+        WHEN 'fatma.kaya@gmail.com' THEN 'Bursa, Türkiye'
+        WHEN 'ali.sahin@gmail.com' THEN 'Antalya, Türkiye'
+        WHEN 'zeynep.koc@gmail.com' THEN 'Adana, Türkiye'
+        WHEN 'huseyin.ozturk@gmail.com' THEN 'Trabzon, Türkiye'
+        WHEN 'emine.arslan@gmail.com' THEN 'Gaziantep, Türkiye'
+        WHEN 'hasan.bozkurt@gmail.com' THEN 'Samsun, Türkiye'
+        WHEN 'elif.cetinkaya@gmail.com' THEN 'Eskişehir, Türkiye'
+        WHEN 'mustafa.polat@gmail.com' THEN 'Diyarbakır, Türkiye'
+        WHEN 'havva.erdem@gmail.com' THEN 'Konya, Türkiye'
+        WHEN 'kemal.tas@gmail.com' THEN 'Kayseri, Türkiye'
+        WHEN 'sevgi.acar@gmail.com' THEN 'Hatay, Türkiye'
+        WHEN 'okan.durmaz@gmail.com' THEN 'Mersin, Türkiye'
+        WHEN 'duygu.gunes@gmail.com' THEN 'Van, Türkiye'
+        WHEN 'salih.isler@gmail.com' THEN 'Malatya, Türkiye'
+        WHEN 'leyla.karaca@gmail.com' THEN 'Denizli, Türkiye'
+        WHEN 'eren.kurt@gmail.com' THEN 'Manisa, Türkiye'
+        WHEN 'beyza.akin@gmail.com' THEN 'Tekirdağ, Türkiye'
+    END AS Address,
+    GETDATE() AS RegistrationDate
+FROM Users
+WHERE UserType = 'Patient';
+GO
+
+INSERT INTO Doctors (UserID, Specialization, ContactNumber, AvailabilityStatus, JoinDate)
+SELECT 
+    UserID, 
+    CASE Email
+        WHEN 'ahmet.kara@hospital.com' THEN 'Kardiyoloji'
+        WHEN 'ayse.demir@hospital.com' THEN 'Nöroloji'
+        WHEN 'mehmet.celik@hospital.com' THEN 'Ortopedi'
+        WHEN 'fatma.kaya@hospital.com' THEN 'Pediatri'
+        WHEN 'ali.sahin@hospital.com' THEN 'Genel Cerrahi'
+        WHEN 'zeynep.koc@hospital.com' THEN 'Dahiliye'
+        WHEN 'huseyin.ozturk@hospital.com' THEN 'Dermatoloji'
+        WHEN 'emine.arslan@hospital.com' THEN 'Psikiyatri'
+        WHEN 'hasan.bozkurt@hospital.com' THEN 'Göz Hastalıkları'
+        WHEN 'elif.cetinkaya@hospital.com' THEN 'KBB (Kulak Burun Boğaz)'
+        WHEN 'mustafa.polat@hospital.com' THEN 'Üroloji'
+        WHEN 'havva.erdem@hospital.com' THEN 'Endokrinoloji'
+        WHEN 'kemal.tas@hospital.com' THEN 'Hematoloji'
+        WHEN 'sevgi.acar@hospital.com' THEN 'Kadın Doğum'
+        WHEN 'okan.durmaz@hospital.com' THEN 'Göğüs Cerrahisi'
+        WHEN 'duygu.gunes@hospital.com' THEN 'Anestezi'
+        WHEN 'salih.isler@hospital.com' THEN 'Plastik Cerrahi'
+        WHEN 'leyla.karaca@hospital.com' THEN 'Radyoloji'
+        WHEN 'eren.kurt@hospital.com' THEN 'Fizyoterapi'
+        WHEN 'beyza.akin@hospital.com' THEN 'Nükleer Tıp'
+    END AS Specialization,
+    CASE Email
+        WHEN 'ahmet.kara@hospital.com' THEN '05321234567'
+        WHEN 'ayse.demir@hospital.com' THEN '05351234567'
+        WHEN 'mehmet.celik@hospital.com' THEN '05421234567'
+        WHEN 'fatma.kaya@hospital.com' THEN '05451234567'
+        WHEN 'ali.sahin@hospital.com' THEN '05331234567'
+        WHEN 'zeynep.koc@hospital.com' THEN '05521234567'
+        WHEN 'huseyin.ozturk@hospital.com' THEN '05341234567'
+        WHEN 'emine.arslan@hospital.com' THEN '05461234567'
+        WHEN 'hasan.bozkurt@hospital.com' THEN '05481234567'
+        WHEN 'elif.cetinkaya@hospital.com' THEN '05361234567'
+        WHEN 'mustafa.polat@hospital.com' THEN '05371234567'
+        WHEN 'havva.erdem@hospital.com' THEN '05471234567'
+        WHEN 'kemal.tas@hospital.com' THEN '05541234567'
+        WHEN 'sevgi.acar@hospital.com' THEN '05491234567'
+        WHEN 'okan.durmaz@hospital.com' THEN '05381234567'
+        WHEN 'duygu.gunes@hospital.com' THEN '05431234567'
+        WHEN 'salih.isler@hospital.com' THEN '05401234567'
+        WHEN 'leyla.karaca@hospital.com' THEN '05391234567'
+        WHEN 'eren.kurt@hospital.com' THEN '05451234567'
+        WHEN 'beyza.akin@hospital.com' THEN '05561234567'
+    END AS ContactNumber,
+    CASE Email
+        WHEN 'ahmet.kara@hospital.com' THEN 'Available'
+        WHEN 'ayse.demir@hospital.com' THEN 'Unavailable'
+        WHEN 'mehmet.celik@hospital.com' THEN 'Available'
+        WHEN 'fatma.kaya@hospital.com' THEN 'Available'
+        WHEN 'ali.sahin@hospital.com' THEN 'Unavailable'
+        WHEN 'zeynep.koc@hospital.com' THEN 'Available'
+        WHEN 'huseyin.ozturk@hospital.com' THEN 'Available'
+        WHEN 'emine.arslan@hospital.com' THEN 'Unavailable'
+        WHEN 'hasan.bozkurt@hospital.com' THEN 'Available'
+        WHEN 'elif.cetinkaya@hospital.com' THEN 'Unavailable'
+        WHEN 'mustafa.polat@hospital.com' THEN 'Available'
+        WHEN 'havva.erdem@hospital.com' THEN 'Available'
+        WHEN 'kemal.tas@hospital.com' THEN 'Unavailable'
+        WHEN 'sevgi.acar@hospital.com' THEN 'Available'
+        WHEN 'okan.durmaz@hospital.com' THEN 'Available'
+        WHEN 'duygu.gunes@hospital.com' THEN 'Available'
+        WHEN 'salih.isler@hospital.com' THEN 'Unavailable'
+        WHEN 'leyla.karaca@hospital.com' THEN 'Available'
+        WHEN 'eren.kurt@hospital.com' THEN 'Available'
+        WHEN 'beyza.akin@hospital.com' THEN 'Unavailable'
+    END AS AvailabilityStatus,
+    GETDATE() AS JoinDate
+FROM Users
+WHERE UserType = 'Doctor';
+GO
+
+-- Inserting records into Appointments table
+INSERT INTO Appointments (PatientID, DoctorID, AppointmentDate, Status, Notes)
+VALUES
+(1, 1, '2024-01-02 10:00:00', 'Scheduled', N'Kardiyoloji kontrolü için randevu.'),
+(2, 3, '2024-01-03 11:30:00', 'Completed', N'Ortopedi muayenesi tamamlandı.'),
+(3, 5, '2024-01-04 09:00:00', 'Scheduled', N'Genel cerrahi ön görüşme.'),
+(4, 2, '2024-01-05 14:00:00', 'Cancelled', N'Nöroloji randevusu hasta tarafından iptal edildi.'),
+(5, 4, '2024-01-06 15:30:00', 'Completed', N'Pediatri kontrolü.'),
+(6, 6, '2024-01-07 10:00:00', 'Scheduled', N'Dahiliye muayenesi için yeni randevu.'),
+(7, 8, '2024-01-08 16:00:00', 'Scheduled', N'Psikiyatri ilk değerlendirme.'),
+(8, 7, '2024-01-09 12:00:00', 'Completed', N'Dermatoloji kontrolü tamamlandı.'),
+(9, 9, '2024-01-10 13:00:00', 'Scheduled', N'Göz hastalıkları rutin muayene.'),
+(10, 10, '2024-01-11 11:00:00', 'Cancelled', N'KBB muayenesi hasta tarafından iptal edildi.'),
+(11, 12, '2024-01-12 14:30:00', 'Scheduled', N'Endokrinoloji için kontrol randevusu.'),
+(12, 15, '2024-01-13 09:30:00', 'Completed', N'Göğüs cerrahisi değerlendirme.'),
+(13, 13, '2024-01-14 16:45:00', 'Scheduled', N'Hematoloji muayenesi.'),
+(14, 14, '2024-01-15 10:30:00', 'Completed', N'Kadın doğum periyodik kontrol.'),
+(15, 18, '2024-01-16 15:15:00', 'Scheduled', N'Radyoloji tetkik randevusu.'),
+(16, 17, '2024-01-17 13:00:00', 'Cancelled', N'Plastik cerrahi randevusu iptal edildi.'),
+(17, 11, '2024-01-18 10:30:00', 'Scheduled', N'Üroloji kontrol randevusu.'),
+(18, 16, '2024-01-19 14:00:00', 'Completed', N'Anestezi değerlendirme tamamlandı.'),
+(19, 19, '2024-01-20 09:45:00', 'Scheduled', N'Fizyoterapi seansı için randevu.'),
+(20, 20, '2024-01-21 11:15:00', 'Scheduled', N'Nükleer tıp görüntüleme randevusu.');
+GO
+
+-- Inserting records into Billing table
+INSERT INTO Billing (AppointmentID, TotalAmount, PaymentStatus)
+VALUES
+(1, 500.00, 'Paid'),
+(2, 300.00, 'Paid'),
+(3, 450.00, 'Unpaid'),
+(5, 200.00, 'Paid'),
+(6, 350.00, 'Unpaid'),
+(7, 150.00, 'Paid'),
+(9, 100.00, 'Paid'),
+(12, 600.00, 'Unpaid'),
+(14, 700.00, 'Paid'),
+(19, 250.00, 'Unpaid');
+GO
+
+-- Inserting records into PharmacyInventory table
+INSERT INTO PharmacyInventory (ItemName, Quantity, PricePerUnit, ExpiryDate, SupplierName)
+VALUES
+(N'Parol (500mg)', 100, 1.50, '2025-12-31', N'PharmaCorp A'),
+(N'Aspirin (100mg)', 200, 0.75, '2024-06-30', N'MedLife Supplies'),
+(N'Ventolin Inhaler', 50, 18.00, '2025-05-15', N'Asthma Solutions Ltd'),
+(N'Amoklavin (875mg)', 75, 4.50, '2024-10-20', N'Antibio Medics'),
+(N'Nurofen (200mg)', 120, 2.00, '2025-08-15', N'Pain Relief Co.'),
+(N'Metpamid (10mg)', 150, 1.00, '2024-04-30', N'GastroHealth Inc.'),
+(N'Novalgin (500mg)', 80, 1.75, '2025-07-01', N'PharmaCorp A'),
+(N'Augmentin (625mg)', 90, 5.50, '2024-11-15', N'Antibio Medics'),
+(N'Dekort (4mg)', 100, 2.50, '2025-03-31', N'Cortisone Pharma'),
+(N'Arveles (25mg)', 110, 3.00, '2025-01-20', N'Pain Relief Co.');
+GO
+select * from PharmacyInventory
+
+-- Inserting records into Prescriptions table
+INSERT INTO Prescriptions (PatientID, DoctorID, Notes)
+VALUES
+(1, 1, N'Kardiyoloji kontrolü sonrası günlük ilaç kullanım talimatları.'),
+(2, 3, N'Ortopedi için fizik tedavi reçetesi.'),
+(3, 5, N'Genel cerrahi sonrası ağrı kesici reçetesi.'),
+(4, 2, N'Nöroloji tetkikleri için reçete düzenlendi.'),
+(5, 4, N'Pediatri hastası için vitamin takviyesi önerildi.'),
+(6, 6, N'Dahiliye muayenesi sonrası kan tahlili sonuçlarına göre reçete.'),
+(7, 7, N'Dermatolojik sorun için krem ve antibiyotik reçetesi.'),
+(8, 9, N'Göz hastalıkları için göz damlası önerildi.'),
+(9, 12, N'Endokrinoloji değerlendirmesi sonrası hormon düzenleyici reçete.'),
+(10, 15, N'Göğüs cerrahisi sonrası antibiyotik reçetesi.'),
+(11, 18, N'Radyoloji tetkikleri sonrası tedavi planı reçete edildi.');
+GO
+
+
+-- Inserting records into PrescriptionItems table
+INSERT INTO PrescriptionItems (PrescriptionID, ItemID, Quantity)
+VALUES
+(1, 1, 2),  
+(1, 2, 1),  
+(2, 4, 3),  
+(3, 5, 1),  
+(3, 6, 2),  
+(4, 7, 4),  
+(5, 8, 2),  
+(6, 9, 3),  
+(7, 10, 1);
+GO
+
+-- Inserting records into Staff table
+INSERT INTO Staff (FirstName, LastName, Role, ContactNumber, Email)
+VALUES
+(N'Ahmet', N'Kaya', N'Nurse', '05321111111', N'ahmet.kaya@hospital.com'),
+(N'Ayşe', N'Demir', N'Nurse', '05322222222', N'ayse.demir@hospital.com'),
+(N'Mehmet', N'Çelik', N'Nurse', '05323333333', N'mehmet.celik@hospital.com'),
+(N'Fatma', N'Yıldız', N'Nurse', '05324444444', N'fatma.yildiz@hospital.com'),
+(N'Ali', N'Şahin', N'Nurse', '05325555555', N'ali.sahin@hospital.com'),
+(N'Zeynep', N'Koç', N'Nurse', '05326666666', N'zeynep.koc@hospital.com'),
+(N'Hüseyin', N'Arslan', N'Nurse', '05327777777', N'huseyin.arslan@hospital.com'),
+(N'Elif', N'Acar', N'Nurse', '05328888888', N'elif.acar@hospital.com'),
+(N'Kemal', N'Durmaz', N'Nurse', '05329999999', N'kemal.durmaz@hospital.com'),
+(N'Sevgi', N'Polat', N'Nurse', '05320000000', N'sevgi.polat@hospital.com'),
+(N'Ali', N'Yılmaz', N'Lab Technician', '05321111112', N'ali.yilmaz@hospital.com'),
+(N'Buse', N'Demir', N'Lab Technician', '05321111113', N'buse.demir@hospital.com'),
+(N'Cem', N'Arslan', N'Lab Technician', '05321111114', N'cem.arslan@hospital.com'),
+(N'Deniz', N'Kaya', N'Lab Technician', '05321111115', N'deniz.kaya@hospital.com'),
+(N'Ebru', N'Koç', N'Lab Technician', '05321111116', N'ebru.koc@hospital.com');
+GO
+
+
+-- Inserting records into Rooms table
+INSERT INTO Rooms (RoomType, RoomNumber, AvailabilityStatus)
+VALUES
+(N'General', N'G111', N'Available'),
+(N'General', N'G102', N'Occupied'),
+(N'ICU', N'ICU201', N'Available'),
+(N'ICU', N'ICU222', N'Occupied'),
+(N'Private', N'P301', N'Available'),
+(N'Private', N'P302', N'Occupied'),
+(N'General', N'G103', N'Available'),
+(N'ICU', N'ICU203', N'Available'),
+(N'Private', N'P303', N'Occupied'),
+(N'General', N'G104', N'Available');
+GO
+
+
+-- Inserting records into Admissions table
+INSERT INTO Admissions (PatientID, RoomID, AdmissionDate, DischargeDate, Notes, ResponsibleDoctorID, ResponsibleNurseID)
+VALUES
+(1, 1, '2024-01-02 10:00:00', NULL, N'Kardiyoloji servisine yatış.', 1, 2),
+(2, 2, '2024-01-03 15:00:00', NULL, N'Ortopedi servisine yatış.', 3, 6),
+(3, 3, '2024-01-05 12:30:00', NULL, N'Genel cerrahi sonrası takip.', 5, 4);
+GO
+
+
+-- Inserting records into MedicalRecords table
+INSERT INTO MedicalRecords (PatientID, DoctorID, RecordDate, Description)
+VALUES
+(1, 1, '2024-01-02 11:00:00', N'Hasta kalp rahatsızlığı için muayene edildi. EKG çekildi ve günlük ilaç önerildi.'),
+(2, 3, '2024-01-03 15:00:00', N'Ortopedik tedavi tamamlandı. 6 hafta fizik tedavi önerildi.'),
+(3, 5, '2024-01-05 09:30:00', N'Genel cerrahi sonrası hasta kontrol edildi. Yaralar temizlendi ve takip önerildi.'),
+(4, 2, '2024-01-10 13:00:00', N'Nörolojik incelemeler yapıldı. İlaç tedavisine başlandı.'),
+(5, 4, '2024-01-15 10:15:00', N'Çocukluk aşı programı tamamlandı. 6 ay sonraki kontrol planlandı.');
+GO
+
+
+-- Inserting records into Surgeries table
+INSERT INTO Surgeries (PatientID, DoctorID, SurgeryDate, SurgeryType, SurgeryDescription)
+VALUES
+(1, 1, '2024-01-10 09:00:00', N'Kalp Ameliyatı', N'Hasta kalp kapakçığı değişimi yapıldı.'),
+(2, 3, '2024-01-12 11:30:00', N'Diz Protezi', N'Sağ diz protezi takıldı ve ameliyat başarılı geçti.'),
+(3, 5, '2024-01-15 08:45:00', N'Apandisit Ameliyatı', N'Apandisit alınarak hasta takip altına alındı.'),
+(4, 2, '2024-01-18 14:00:00', N'Beyin Tümörü Operasyonu', N'Tümör çıkarma işlemi başarıyla tamamlandı.'),
+(5, 4, '2024-01-20 13:00:00', N'Böbrek Nakli', N'Canlı vericiden böbrek nakli gerçekleştirildi.');
+GO
+
+
+-- Inserting records into LabTechnicians table
+INSERT INTO LabTechnicians (FirstName, LastName, ContactNumber, Email)
+VALUES
+(N'Ali', N'Yılmaz', '05321111112', N'ali.yilmaz@hospital.com'),
+(N'Buse', N'Demir', '05321111113', N'buse.demir@hospital.com'),
+(N'Cem', N'Arslan', '05321111114', N'cem.arslan@hospital.com'),
+(N'Deniz', N'Kaya', '05321111115', N'deniz.kaya@hospital.com'),
+(N'Ebru', N'Koç', '05321111116', N'ebru.koc@hospital.com');
+GO
+
+
+-- Inserting records into LabTests table
+INSERT INTO LabTests (PatientID, TechnicianID, TestName, TestDate, TestResult)
+VALUES 
+(1, 1, N'Blood Test', '2024-01-01 10:30:00', N'Normal'),
+(2, 2, N'MRI', '2024-01-02 14:00:00', N'Minor issues detected'),
+(3, 3, N'X-Ray', '2024-01-03 15:00:00', N'Fracture detected'),
+(4, 4, N'Urine Test', '2024-01-04 09:00:00', N'Infection detected'),
+(5, 5, N'CT Scan', '2024-01-05 12:30:00', N'Clear');
+GO
+
+-- Inserting records into LabTestAssignments table
+INSERT INTO LabTestAssignments (TestID, TechnicianID, AssignmentDate)
+VALUES
+(1, 1, '2024-01-01 10:00:00'),
+(2, 2, '2024-01-02 14:30:00'), 
+(3, 3, '2024-01-03 11:00:00'),
+(4, 4, '2024-01-04 09:15:00'),
+(5, 5, '2024-01-05 12:45:00'); 
+GO
+
+INSERT INTO Documents (DocumentType, RelatedID, CreatedBy, CreatedFor, CreationDate, Status, Description)
+VALUES
+('Invoice', 1, 1, 1, GETDATE(), 'Completed', N'Kardiyoloji servisine yatış sonrası fatura.'),
+('Prescription', 1, 1, 1, GETDATE(), 'Completed', N'Kardiyoloji kontrolü için reçete.'),
+('Report', 1, 1, 1, GETDATE(), 'Completed', N'Hastanın durumu hakkında detaylı rapor.'),
+('Invoice', 2, 3, 2, GETDATE(), 'Completed', N'Ortopedi kontrol sonrası fatura.'),
+('Prescription', 2, 3, 2, GETDATE(), 'Completed', N'Ortopedi kontrolü için ilaç reçetesi.'),
+('Report', 2, 3, 2, GETDATE(), 'Completed', N'Ortopedi ameliyat raporu.'),
+('Invoice', 3, 5, 3, GETDATE(), 'Completed', N'Genel cerrahi sonrası fatura.'),
+('Prescription', 3, 5, 3, GETDATE(), 'Completed', N'Ağrı kesici reçetesi.'),
+('Report', 3, 5, 3, GETDATE(), 'Completed', N'Genel cerrahi takip raporu.'),
+('Invoice', 4, 2, 4, GETDATE(), 'Completed', N'Nöroloji kontrol sonrası fatura.');
+GO
+INSERT INTO DocumentAccess (DocumentID, UserID, AccessLevel, AccessDate)
+VALUES
+(1, 1, 'Read', GETDATE()),
+(1, 2, 'Write', GETDATE()),
+(2, 1, 'Read', GETDATE()),
+(2, 2, 'Write', GETDATE()),
+(3, 1, 'Read', GETDATE()),
+(3, 2, 'Write', GETDATE()),
+(4, 3, 'Read', GETDATE()),
+(4, 4, 'Write', GETDATE()),
+(5, 3, 'Read', GETDATE()),
+(5, 4, 'Write', GETDATE());
+GO
+INSERT INTO InvoiceDetails (DocumentID, ItemDescription, Quantity, UnitPrice)
+VALUES
+(1, N'Oda Ücreti', 3, 300.00),
+(1, N'Doktor Ücreti', 1, 500.00),
+(2, N'Oda Ücreti', 2, 200.00),
+(2, N'Hemşire Ücreti', 1, 150.00),
+(3, N'Cerrahi Ücret', 1, 700.00),
+(3, N'Yatış Ücreti', 4, 300.00),
+(4, N'Doktor Ücreti', 1, 450.00),
+(4, N'Tetkik Ücreti', 1, 100.00),
+(5, N'Oda Ücreti', 5, 400.00),
+(5, N'İlaç Ücreti', 2, 50.00);
+GO
+INSERT INTO ReportDetails (DocumentID, ReportTitle, ReportContent)
+VALUES
+(3, N'Hasta Durumu', N'Hasta, düzenli ilaç kullanımına devam etmeli.'),
+(6, N'Ameliyat Sonrası Durum', N'Ameliyat başarılı geçti, hasta kontrol edilmeli.'),
+(9, N'Takip Raporu', N'Yaraların iyileşmesi takip edilmeli.'),
+(2, N'Tetkik Sonuçları', N'Tahlil sonuçları temiz, ek bir işlem gerekmez.'),
+(5, N'Tetkik İncelemesi', N'Hastanın tedavisi planlandı.'),
+(4, N'Hasta Durumu', N'Tedavi başarılı şekilde tamamlandı.'),
+(7, N'Hormon Dengesi', N'Hormonal tedavi sonuçları pozitif.'),
+(8, N'Anestezi Kontrolü', N'Hasta anestezi sonrası normal durumda.'),
+(10, N'Fizyoterapi Durumu', N'Hasta iyileşme sürecinde.'),
+(1, N'Görüntüleme İncelemesi', N'Görüntüleme sonuçları temiz.');
+GO
+
+INSERT INTO PrescriptionDetails (DocumentID, ItemID, Quantity)
+VALUES
+(2, 1, 2),
+(2, 2, 1),
+(5, 3, 1),
+(5, 4, 2),
+(3, 5, 1),
+(3, 6, 2),
+(6, 7, 4),
+(6, 8, 1),
+(9, 9, 3),
+(9, 10, 2);
+GO
+
